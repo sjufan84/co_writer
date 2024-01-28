@@ -65,16 +65,17 @@ async def main():
 
     # Add a blank line
     st.text("")
+    st.write(st.session_state.chat_history)
 
     # Display chat messages from history on app rerun
     for message in st.session_state.chat_history:
         logging.debug(f"Displaying message: {message}")
-        if message["role"] == "assistant":
-            with st.chat_message(message["role"], avatar="🎸"):
-                st.markdown(message["content"])
-        elif message["role"] == "user":
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+        if message.role == "assistant":
+            with st.chat_message(message.role, avatar="🎸"):
+                st.markdown(message.content)
+        elif message.role == "user":
+            with st.chat_message(message.role):
+                st.markdown(message.content)
 
     # Accept user input
     if prompt := st.chat_input("Hey friend, let's start writing!"):
@@ -104,7 +105,7 @@ async def main():
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)
         # Add assistant message to chat history
-        st.session_state.chat_history.append({"role": "assistant", "content": full_response})
-      
+        st.session_state.chat_history.append(ChatMessage(role="assistant", content=full_response))
+
 if __name__ == "__main__":
     asyncio.run(main())
