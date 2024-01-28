@@ -2,10 +2,14 @@
 import logging
 from typing import List
 import os
+from dotenv import load_dotenv
 import unittest
 from unittest.mock import patch, MagicMock
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)

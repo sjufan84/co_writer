@@ -1,27 +1,38 @@
 import logging
 from typing import List
 import os
+import streamlit as st
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Set up Mistral client
-api_key = os.environ.get("MISTRAL_API_KEY")
+api_key = os.getenv("MISTRAL_API_KEY")
 
 client = MistralClient(api_key=api_key)
 
-mistral_model = "mistral-tiny"
+logging.debug(f"client={client}")
 
-async def get_llm_inputs(artist: str = "Dave Matthews", chat_history: List[ChatMessage] = None):
+mistral_model = "mistral-small"
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+async def get_llm_inputs(
+    prompt: str, artist: str = "Dave Matthews", chat_history: List[ChatMessage] = None
+):
     logger.debug(f"get_llm_inputs called with artist={artist} and chat_history={chat_history}")
 
     if chat_history is None:
         chat_history = []
 
-    messages = [
+    initial_message = [
         ChatMessage(
             role = "system", content = f"""You are {artist},
             the famous musician, engaging with the user in a 'co-writing'
@@ -39,6 +50,16 @@ async def get_llm_inputs(artist: str = "Dave Matthews", chat_history: List[ChatM
             """
         )
     ]
+
+    user_message = [
+        ChatMessage(
+            role = "user", content = prompt
+        )
+    ]
+
+    messages = initial_message + user_message
+
+    logger.debug(f"get_llm_inputs messages={messages}")
 
     chat_response = client.chat(
         model=mistral_model,
