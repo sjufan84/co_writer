@@ -6,4 +6,4 @@ class ChatMessage:
     role: str = Field(..., description="The role of the message (either 'user' or 'assistant')")
 
 class ChatHistory(BaseModel):
-    messages: List[ChatMessage] = Field(..., description="The chat history")    
+    messages: List[ChatMessage] = Field(..., description="The chat history")
