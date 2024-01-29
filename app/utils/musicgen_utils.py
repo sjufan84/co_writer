@@ -1,6 +1,10 @@
 import logging
 from typing import List
 import os
+import asyncio
+# import numpy as np
+import requests
+import json
 import streamlit as st
 from mistralai.async_client import MistralAsyncClient
 from mistralai.models.chat_completion import ChatMessage
@@ -12,24 +16,17 @@ load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Set up Mistral client
-api_key = os.getenv("MISTRAL_API_KEY")
-print(type(api_key))
-
-client = MistralAsyncClient(api_key=api_key)
-
-print(client)
-
-logging.debug(f"client={client}")
-
-mistral_model = "mistral-tiny"
-
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 async def get_llm_inputs(
     prompt: str, artist: str = "Dave Matthews", chat_history: List[ChatMessage] = None
 ):
+    """ Get the inputs for the LLM model """
+    # Set up Mistral client
+    api_key = os.getenv("MISTRAL_API_KEY")
+    client = MistralAsyncClient(api_key=api_key)
+    mistral_model = "mistral-tiny"
 
     if chat_history is None:
         chat_history = st.session_state.chat_history
@@ -86,3 +83,48 @@ async def get_llm_inputs(
     st.session_state.chat_history = chat_history
 
     return prompt
+
+async def generate_text_music(prompt: str = None):
+    """ Get a response from the music gen model
+    based on text, no music """
+    auth_token = os.getenv("HUGGINGFACE_TOKEN")
+    if not prompt:
+        prompt = await get_llm_inputs()
+    API_URL = "https://j8q5ioorjuh9ce3u.us-east-1.aws.endpoints.huggingface.cloud"
+    payload = {
+        "inputs" : prompt,
+    }
+    print(payload)
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json"
+    }
+    print(json.dumps(payload))
+    print(type(json.dumps(payload)))
+    inputs_dict = json.loads(json.dumps(payload))
+    inputs = inputs_dict.pop("inputs")
+    print(inputs)
+    response = requests.post(API_URL, headers=headers, data=json.dumps(payload))
+    return response
+
+'''async def generate_audio_music(prompt: str = None, audio_clip: Union[np.array, None] = None):
+    """ Get a response from the music gen model
+    based on text, no music """
+    auth_token = os.getenv("HUGGINGFACE_TOKEN")
+    if not prompt:
+        prompt = await get_llm_inputs()
+    API_URL =
+    payload = {
+        "inputs" : prompt,
+    }
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json"
+    }
+    response = requests.post(API_URL, headers=headers, data=json.dumps(payload))
+    return response.json()'''
+
+if __name__ == "__main__":
+    text_prompt = "a funky house with 80s hip hop vibes"
+    output = asyncio.run(generate_text_music(prompt=text_prompt))
+    print(output)
