@@ -94,6 +94,8 @@ async def main():
             prompt, artist="Dave Matthews", chat_history=st.session_state.chat_history
         )
         logging.debug(f"llm_inputs={llm_inputs}")
+        st.write(llm_inputs)
+        st.write(st.session_state.chat_history)
         st.stop()
         response = client.chat_stream(
             model="mistral-small",
