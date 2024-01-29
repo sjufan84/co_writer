@@ -2,7 +2,7 @@ import asyncio
 import os
 import streamlit as st
 from mistralai.models.chat_completion import ChatMessage
-# from utils.musicgen_utils import get_llm_inputs
+from utils.musicgen_utils import get_llm_inputs
 from mistralai.client import MistralClient
 from dotenv import load_dotenv
 import logging
@@ -85,11 +85,16 @@ async def main():
         # Display user message in chat message container
         with st.chat_message("user"):
             st.markdown(prompt)
-        # Load the prophet image for the avatar
         # Display assistant response in chat message container
         with st.chat_message("assistant", avatar="🎸"):
             message_placeholder = st.empty()
             full_response = ""
+        # Test the get_llm_inputs function
+        llm_inputs = await get_llm_inputs(
+            prompt, artist="Dave Matthews", chat_history=st.session_state.chat_history
+        )
+        logging.debug(f"llm_inputs={llm_inputs}")
+        st.stop()
         response = client.chat_stream(
             model="mistral-small",
             messages= new_prompt + [ChatMessage(role = m.role, content = m.content)

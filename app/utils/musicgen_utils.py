@@ -59,7 +59,7 @@ async def get_llm_inputs(
 
     messages = initial_message + user_message
 
-    logger.debug(f"get_llm_inputs messages={messages}")
+    logging.info(f"get_llm_inputs messages={messages}")
 
     chat_response = client.chat(
         model=mistral_model,
@@ -68,6 +68,19 @@ async def get_llm_inputs(
 
     prompt = chat_response.choices[0].message.content
 
-    logger.debug(f"get_llm_inputs returning prompt={prompt}")
+    response_message = [
+        ChatMessage(
+            role = "system", content = f"""You have created the following prompt for the model:
+            {prompt}
+            """
+        )
+    ]
+
+    # Add the response message to the chat history
+    st.session_state.chat_history.extend(response_message)
+
+    logging.debug(f"LLM Chat Message : {st.session_state.chat_history[-1]}")
+
+    logging.debug(f"get_llm_inputs returning prompt={prompt}")
 
     return prompt
