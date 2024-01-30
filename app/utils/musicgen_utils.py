@@ -90,21 +90,19 @@ async def generate_text_music(prompt: str = None):
     auth_token = os.getenv("HUGGINGFACE_TOKEN")
     if not prompt:
         prompt = await get_llm_inputs()
+    logger.info(prompt)
     API_URL = "https://j8q5ioorjuh9ce3u.us-east-1.aws.endpoints.huggingface.cloud"
     payload = {
         "inputs" : prompt,
+        "parameters" : {}
     }
     print(payload)
     headers = {
         "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json"
     }
-    print(json.dumps(payload))
-    print(type(json.dumps(payload)))
-    inputs_dict = json.loads(json.dumps(payload))
-    inputs = inputs_dict.pop("inputs")
-    print(inputs)
-    response = requests.post(API_URL, headers=headers, data=json.dumps(payload))
+
+    response = requests.post(API_URL, headers=headers, json=payload)
     return response
 
 '''async def generate_audio_music(prompt: str = None, audio_clip: Union[np.array, None] = None):
