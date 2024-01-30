@@ -18,25 +18,24 @@ logger = logging.getLogger(__name__)
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "current_prompt" not in st.session_state:
+    st.session_state.current_prompt = None
 
 async def get_llm_inputs(
-    prompt: str, artist: str = "Dave Matthews", chat_history: List[ChatMessage] = None
+    prompt: str = None, artist: str = "Dave Matthews"
 ):
     """ Get the inputs for the LLM model """
     # Set up Mistral client
     api_key = os.getenv("MISTRAL_API_KEY")
     client = MistralAsyncClient(api_key=api_key)
-    mistral_model = "mistral-tiny"
-
-    if chat_history is None:
-        chat_history = st.session_state.chat_history
+    mistral_model = "mistral-small"
 
     initial_message = [
         ChatMessage(
             role = "system", content = f"""You are a famous artist in the style of {artist},
             the famous musician, engaging with the user in a 'co-writing'
             session.  Your job is to help create a text prompt for a music generating
-            model based the chat history so far {chat_history}
+            model based on your previous prompt {st.session_state.current_prompt}
             and the prompt {prompt} that the user provides.
             Here are some examples of prompts for the model:
 
@@ -55,8 +54,8 @@ async def get_llm_inputs(
 
     user_message = [
         ChatMessage(
-            role = "user", content = f"""Please provide a prompt for the music gen model based on our
-            conversation so far and and my prompt {prompt}."""
+            role = "user", content = f"""Please provide a prompt for the music gen model based on the
+            previous prompt {st.session_state.current_prompt} so far and and my prompt {prompt}."""
         )
     ]
 
@@ -69,18 +68,7 @@ async def get_llm_inputs(
 
     prompt = chat_response.choices[0].message.content
 
-    response_message = [
-        ChatMessage(
-            role = "system", content = f"""You have created the following prompt for the model:
-            {prompt}
-            """
-        )
-    ]
-
-    # Add the response message to the chat history
-    chat_history.extend(response_message)
-
-    st.session_state.chat_history = chat_history
+    st.session_state.current_prompt = prompt
 
     return prompt
 
@@ -88,13 +76,17 @@ async def generate_text_music(prompt: str = None):
     """ Get a response from the music gen model
     based on text, no music """
     auth_token = os.getenv("HUGGINGFACE_TOKEN")
-    if not prompt:
-        prompt = await get_llm_inputs()
+    prompt = await get_llm_inputs(prompt=prompt)
     logger.info(prompt)
     API_URL = "https://j8q5ioorjuh9ce3u.us-east-1.aws.endpoints.huggingface.cloud"
     payload = {
         "inputs" : prompt,
-        "parameters" : {}
+        "parameters" : {
+            "do_sample": True,
+            "temperature": 0.7,
+            "duration": 12,
+            "guidance_scale": 3
+        }
     }
     print(payload)
     headers = {

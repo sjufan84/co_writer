@@ -1,8 +1,10 @@
 import asyncio
 import os
+import numpy as np
+# import json
 import streamlit as st
 from mistralai.models.chat_completion import ChatMessage
-from utils.musicgen_utils import get_llm_inputs
+from utils.musicgen_utils import generate_text_music
 from mistralai.client import MistralClient
 from dotenv import load_dotenv
 import logging
@@ -23,10 +25,10 @@ def init_cowriter_session_variables():
     """ Initialize session state variables """
     # Initialize session state variables
     session_vars = [
-        "chat_history"
+        "chat_history", "current_audio_clip", "chat_mode", "prompt_chat_history", "current_prompt"
     ]
     default_values = [
-        []
+        [], None, "text", None, None
     ]
     for var, default_value in zip(session_vars, default_values):
         if var not in st.session_state:
@@ -36,6 +38,13 @@ init_cowriter_session_variables()
 
 async def main():
     """ Main function for the chat page """
+    chat_mode_toggle = st.sidebar.radio(
+        "Chat Mode", ["Text", "Audio"], index=0
+    )
+    if len(st.session_state.chat_history) >= 3:
+        st.session_state.prompt_chat_history = st.session_state.chat_history[-3:]
+    else:
+        st.session_state.prompt_chat_history = st.session_state.chat_history
     new_prompt = [
         ChatMessage(
             role = "system", content = f"""You are Dave Matthews,
@@ -43,7 +52,7 @@ async def main():
             co-writing session with the user who could be a fellow musician or fan.  The goal
             of the session is to help the user feel as though you are right alongside them,
             helping them craft their song with Dave's style and personality.  Do not break character.
-            Your conversation so far is {st.session_state.chat_history}.
+            Your most recent chat history is {st.session_state.prompt_chat_history}.
             """)
     ]
 
@@ -63,10 +72,6 @@ async def main():
             demo purposes, we are not utilizing large amounts of GPU resources."
         )
 
-    # Add a blank line
-    st.text("")
-    st.write(st.session_state.chat_history)
-
     # Display chat messages from history on app rerun
     for message in st.session_state.chat_history:
         logging.debug(f"Displaying message: {message}")
@@ -82,6 +87,8 @@ async def main():
         logging.debug(f"Received user input: {prompt}")
         # Add user message to chat history
         st.session_state.chat_history.append(ChatMessage(role="user", content=prompt))
+        if len(st.session_state.prompt_chat_history) <= 3:
+            new_prompt = st.session_state.chat_history
         # Display user message in chat message container
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -89,18 +96,11 @@ async def main():
         with st.chat_message("assistant", avatar="🎸"):
             message_placeholder = st.empty()
             full_response = ""
-        # Test the get_llm_inputs function
-        llm_inputs = await get_llm_inputs(
-            prompt, artist="Dave Matthews", chat_history=st.session_state.chat_history
-        )
-        logging.debug(f"llm_inputs={llm_inputs}")
-        st.write(llm_inputs)
         st.write(st.session_state.chat_history)
-        st.stop()
+        st.write(new_prompt)
         response = client.chat_stream(
             model="mistral-small",
-            messages= new_prompt + [ChatMessage(role = m.role, content = m.content)
-                                    for m in st.session_state.chat_history],
+            messages= new_prompt,
             temperature=0.75,
             max_tokens=350,
         )
@@ -111,8 +111,24 @@ async def main():
             full_response += chunk.choices[0].delta.content
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)
-        # Add assistant message to chat history
+        logging.debug(f"Received response: {full_response}")
         st.session_state.chat_history.append(ChatMessage(role="assistant", content=full_response))
+        logging.debug(f"Chat history: {st.session_state.chat_history}")
+        if chat_mode_toggle == "Audio":
+            with st.spinner("Composing your audio...  I'll be back shortly!"):
+                audio_clip = await generate_text_music(prompt=prompt)
+                st.write(audio_clip)
+                audio_clip_json = audio_clip.json()
+                st.session_state.current_audio_clip = audio_clip_json
+                logging.info(f"Current clip: {st.session_state.current_audio_clip}")
+                logging.debug("Rerunning app after composing audio.")
+                st.rerun()
+    if st.session_state.current_audio_clip:
+        audio_array = np.array(st.session_state.current_audio_clip[0]["generated_text"]).flatten()
+        sample_rate = st.session_state.current_audio_clip[0]["sampling_rate"]
+        st.write(audio_array[:100])
+        st.write(sample_rate)
+        st.audio(data=audio_array, sample_rate=sample_rate)
 
 if __name__ == "__main__":
     asyncio.run(main())
