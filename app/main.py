@@ -2,6 +2,7 @@ import asyncio
 import os
 import numpy as np
 # import json
+from IPython.display import Audio
 import streamlit as st
 from mistralai.models.chat_completion import ChatMessage
 from utils.musicgen_utils import generate_text_music
@@ -123,9 +124,13 @@ async def main():
                 logging.debug("Rerunning app after composing audio.")
                 st.rerun()
     if st.session_state.current_audio_clip:
-        audio_array = np.array(st.session_state.current_audio_clip[0]["generated_text"]).flatten()
-        sample_rate = st.session_state.current_audio_clip[0]["sampling_rate"]
-        st.audio(data=audio_array, sample_rate=sample_rate)
-
+        try:
+            audio_array = st.session_state.current_audio_clip[0]["generated_text"]
+            st.write(Audio(audio_array, rate=32000))
+            logging.debug(f"Audio array: {audio_array}, success!")
+        except Exception as e:
+            logging.error(f"Failed to play audio: {e}")
+            st.error("Failed to play audio with Audio, trying alternative method.")
+            st.audio(audio_array.flatten(), format="audio/wav", sample_rate=32000)
 if __name__ == "__main__":
     asyncio.run(main())
