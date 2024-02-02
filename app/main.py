@@ -5,7 +5,7 @@ import numpy as np
 from IPython.display import Audio
 import streamlit as st
 from mistralai.models.chat_completion import ChatMessage
-from utils.musicgen_utils import generate_text_music
+from utils.musicgen_utils import generate_text_music, generate_audio_prompted_music
 from mistralai.client import MistralClient
 from dotenv import load_dotenv
 import logging
@@ -117,20 +117,36 @@ async def main():
         logging.debug(f"Chat history: {st.session_state.chat_history}")
         if chat_mode_toggle == "Audio":
             with st.spinner("Composing your audio...  I'll be back shortly!"):
-                audio_clip = await generate_text_music(prompt=prompt)
+                if st.session_state.current_audio_clip:
+                    logger.debug("Generating audio with audio prompt.")
+                    audio_clip = await generate_audio_prompted_music(
+                        prompt=prompt,
+                        audio_clip=np.array(st.session_state.current_audio_clip[0]["generated_text"]).flatten()
+                    )
+                    st.session_state.current_audio_clip = None
+                else:
+                    audio_clip = await generate_text_music(prompt=prompt)
                 audio_clip_json = audio_clip.json()
                 st.session_state.current_audio_clip = audio_clip_json
                 logging.info(f"Current clip: {st.session_state.current_audio_clip}")
                 logging.debug("Rerunning app after composing audio.")
                 st.rerun()
-    if st.session_state.current_audio_clip:
+    if st.session_state.current_audio_clip is not None:
         try:
             audio_array = st.session_state.current_audio_clip[0]["generated_text"]
             st.write(Audio(audio_array, rate=32000))
             logging.debug(f"Audio array: {audio_array}, success!")
         except Exception as e:
-            logging.error(f"Failed to play audio: {e}")
-            st.error("Failed to play audio with Audio, trying alternative method.")
-            st.audio(audio_array.flatten(), format="audio/wav", sample_rate=32000)
+            try:
+                logging.error(f"Failed to play audio: {e}")
+                st.error("Failed to play audio with Audio, trying alternative method.")
+                audio_array = st.session_state.current_audio_clip[0]["generated_text"]
+                st.audio(audio_array.flatten(), format="audio/wav", sample_rate=32000)
+            except Exception as e:
+                logging.error(f"Failed to play audio with alternative method: {e}")
+                st.error("Failed to play audio with alternative method.")
+    else:
+        logging.debug("No audio clip available.")
+        st.write("No audio clip available.")
 if __name__ == "__main__":
     asyncio.run(main())
