@@ -28,7 +28,7 @@ def init_cowriter_session_variables():
         "chat_history", "current_audio_clip", "chat_mode", "prompt_chat_history", "current_prompt"
     ]
     default_values = [
-        [], None, "text", None, None
+        [], None, "text", [], None
     ]
     for var, default_value in zip(session_vars, default_values):
         if var not in st.session_state:
@@ -38,21 +38,20 @@ init_cowriter_session_variables()
 
 async def main():
     """ Main function for the chat page """
+    st.write(f"Current prompt: {st.session_state.current_prompt}")
+    st.sidebar.write(f"Current chat mode: {st.session_state.chat_mode}")
     chat_mode_toggle = st.sidebar.radio(
         "Chat Mode", ["Text", "Audio"], index=0
     )
-    if len(st.session_state.chat_history) >= 3:
-        st.session_state.prompt_chat_history = st.session_state.chat_history[-3:]
-    else:
-        st.session_state.prompt_chat_history = st.session_state.chat_history
     new_prompt = [
         ChatMessage(
-            role = "system", content = f"""You are Dave Matthews,
+            role = "system", content = """You are Dave Matthews,
             the famous musician and songwriter, engaged in a
             co-writing session with the user who could be a fellow musician or fan.  The goal
             of the session is to help the user feel as though you are right alongside them,
             helping them craft their song with Dave's style and personality.  Do not break character.
-            Your most recent chat history is {st.session_state.prompt_chat_history}.
+            Your most recent chat history is detailed in the next prompts.  Keep your answers concise
+            and open-ended to help the user feel as though they are in a real conversation with you.
             """)
     ]
 
@@ -87,8 +86,10 @@ async def main():
         logging.debug(f"Received user input: {prompt}")
         # Add user message to chat history
         st.session_state.chat_history.append(ChatMessage(role="user", content=prompt))
-        if len(st.session_state.prompt_chat_history) <= 3:
-            new_prompt = st.session_state.chat_history
+        if len(st.session_state.chat_history) >= 3:
+            st.session_state.prompt_chat_history = st.session_state.chat_history[-3:]
+        else:
+            st.session_state.prompt_chat_history = st.session_state.chat_history
         # Display user message in chat message container
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -96,14 +97,13 @@ async def main():
         with st.chat_message("assistant", avatar="🎸"):
             message_placeholder = st.empty()
             full_response = ""
-        st.write(st.session_state.chat_history)
-        st.write(new_prompt)
         response = client.chat_stream(
-            model="mistral-small",
-            messages= new_prompt,
+            model="mistral-medium",
+            messages=new_prompt + st.session_state.prompt_chat_history,
             temperature=0.75,
-            max_tokens=350,
+            max_tokens=750,
         )
+        st.write(f"Messages: {new_prompt + st.session_state.prompt_chat_history}")
         for chunk in response:
             if chunk.choices[0].finish_reason == "stop":
                 logging.debug("Received 'stop' signal from response.")
@@ -117,7 +117,6 @@ async def main():
         if chat_mode_toggle == "Audio":
             with st.spinner("Composing your audio...  I'll be back shortly!"):
                 audio_clip = await generate_text_music(prompt=prompt)
-                st.write(audio_clip)
                 audio_clip_json = audio_clip.json()
                 st.session_state.current_audio_clip = audio_clip_json
                 logging.info(f"Current clip: {st.session_state.current_audio_clip}")
@@ -126,8 +125,6 @@ async def main():
     if st.session_state.current_audio_clip:
         audio_array = np.array(st.session_state.current_audio_clip[0]["generated_text"]).flatten()
         sample_rate = st.session_state.current_audio_clip[0]["sampling_rate"]
-        st.write(audio_array[:100])
-        st.write(sample_rate)
         st.audio(data=audio_array, sample_rate=sample_rate)
 
 if __name__ == "__main__":

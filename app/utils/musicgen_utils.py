@@ -1,10 +1,10 @@
 import logging
-from typing import List
+# from typing import List
 import os
 import asyncio
 # import numpy as np
 import requests
-import json
+# import json
 import streamlit as st
 from mistralai.async_client import MistralAsyncClient
 from mistralai.models.chat_completion import ChatMessage
@@ -70,6 +70,12 @@ async def get_llm_inputs(
 
     st.session_state.current_prompt = prompt
 
+    # prompt_message = ChatMessage(
+    #    role = "system", content = f"""I've created this prompt for the music gen model:
+    #    {prompt}"""
+    # )
+    # st.session_state.chat_history.append(prompt_message)
+
     return prompt
 
 async def generate_text_music(prompt: str = None):
@@ -96,23 +102,6 @@ async def generate_text_music(prompt: str = None):
 
     response = requests.post(API_URL, headers=headers, json=payload)
     return response
-
-'''async def generate_audio_music(prompt: str = None, audio_clip: Union[np.array, None] = None):
-    """ Get a response from the music gen model
-    based on text, no music """
-    auth_token = os.getenv("HUGGINGFACE_TOKEN")
-    if not prompt:
-        prompt = await get_llm_inputs()
-    API_URL =
-    payload = {
-        "inputs" : prompt,
-    }
-    headers = {
-        "Authorization": f"Bearer {auth_token}",
-        "Content-Type": "application/json"
-    }
-    response = requests.post(API_URL, headers=headers, data=json.dumps(payload))
-    return response.json()'''
 
 if __name__ == "__main__":
     text_prompt = "a funky house with 80s hip hop vibes"
