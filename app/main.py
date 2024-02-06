@@ -69,7 +69,7 @@ async def main():
                 st.audio(st.session_state.recorded_vocals, format="audio/wav")
                 clone_button = st.sidebar.button("Clone Vocals")
                 if clone_button:
-                    with st.spinner("Cloning your vocals...  I'll be back shortly!"):
+                    with st.spinner("Cloning your vocals...  This will take a minute.  I'll be back shortly!"):
                         audio_path = "./audios/recorded_audio.wav"
                         with open(audio_path, "wb") as f:
                             f.write(st.session_state.recorded_vocals)
