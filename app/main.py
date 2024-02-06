@@ -1,6 +1,8 @@
 import asyncio
 import os
 import numpy as np
+# import pandas as pd
+# from pathlib import Path
 # import json
 from IPython.display import Audio
 import streamlit as st
@@ -20,6 +22,13 @@ load_dotenv()
 api_key = os.getenv("MISTRAL_API_KEY")
 
 client = MistralClient(api_key=api_key)
+
+# @TODO - set up selectbox for audio samples for the
+# user to choose from
+# df = pd.read_csv(Path("app/audio_samples.csv"))
+
+# list1 = df["Sample 0"].tolist()
+# list2 = df["Sample 1"].tolist()
 
 # Create a function to initialize the session state variables
 def init_cowriter_session_variables():
@@ -121,8 +130,8 @@ async def main():
                     logger.debug("Generating audio with audio prompt.")
                     audio_clip = await generate_audio_prompted_music(
                         prompt=prompt,
-                        audio_clip=np.array(st.session_state.current_audio_clip[0]["generated_text"]).flatten()
-                    )
+                        audio_clip=np.array(
+                            st.session_state.current_audio_clip[0]["generated_text"]).flatten())
                     st.session_state.current_audio_clip = None
                 else:
                     audio_clip = await generate_text_music(prompt=prompt)

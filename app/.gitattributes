@@ -1,0 +1,6 @@
+hubert_base.pt filter=lfs diff=lfs merge=lfs -text
+logs/jenny/added_IVF533_Flat_nprobe_1.index filter=lfs diff=lfs merge=lfs -text
+logs/joel/added_IVF479_Flat_nprobe_1.index filter=lfs diff=lfs merge=lfs -text
+rmvpe.pt filter=lfs diff=lfs merge=lfs -text
+weights/jenny.pth filter=lfs diff=lfs merge=lfs -text
+weights/joel.pth filter=lfs diff=lfs merge=lfs -text
