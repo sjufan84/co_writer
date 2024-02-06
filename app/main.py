@@ -1,15 +1,16 @@
 import asyncio
 import os
+import sys
 import numpy as np
-# import pandas as pd
-# from pathlib import Path
-# import json
 from IPython.display import Audio
 import streamlit as st
+from audio_recorder_streamlit import audio_recorder
 from mistralai.models.chat_completion import ChatMessage
-from utils.musicgen_utils import generate_text_music, generate_audio_prompted_music
 from mistralai.client import MistralClient
 from dotenv import load_dotenv
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app import clone_vocals
+from musicgen_utils import generate_audio_prompted_music, generate_text_music
 import logging
 
 # Set up logging
@@ -35,10 +36,11 @@ def init_cowriter_session_variables():
     """ Initialize session state variables """
     # Initialize session state variables
     session_vars = [
-        "chat_history", "current_audio_clip", "chat_mode", "prompt_chat_history", "current_prompt"
+        "chat_history", "current_audio_clip", "chat_mode", "prompt_chat_history", "current_prompt",
+        "recorded_vocals", "current_cloned_vocals"
     ]
     default_values = [
-        [], None, "text", [], None
+        [], None, "text", [], None, None, None
     ]
     for var, default_value in zip(session_vars, default_values):
         if var not in st.session_state:
@@ -50,11 +52,38 @@ async def main():
     """ Main function for the chat page """
     st.write(f"Current prompt: {st.session_state.current_prompt}")
     st.sidebar.write(f"Current chat mode: {st.session_state.chat_mode}")
+    st.write(st.session_state.current_cloned_vocals)
     chat_mode_toggle = st.sidebar.radio(
-        "Chat Mode", ["Text", "Audio"], index=0
+        "Chat Mode", ["Text", "Audio", "Voice Clone"], index=0
     )
-    new_prompt = [
-        ChatMessage(
+    if chat_mode_toggle == "Voice Clone":
+        st.sidebar.markdown("**Record your vocals to be cloned:**")
+        with st.sidebar.container():
+            audio_bytes = audio_recorder()
+            if audio_bytes:
+                st.session_state.recorded_vocals = audio_bytes
+                logger.debug(f"Recorded vocals: {audio_bytes}")
+        if st.session_state.recorded_vocals:
+            with st.sidebar.container():
+                st.markdown("Your recorded vocals:")
+                st.audio(st.session_state.recorded_vocals, format="audio/wav")
+                clone_button = st.sidebar.button("Clone Vocals")
+                if clone_button:
+                    with st.spinner("Cloning your vocals...  I'll be back shortly!"):
+                        audio_path = "./audios/recorded_audio.wav"
+                        with open(audio_path, "wb") as f:
+                            f.write(st.session_state.recorded_vocals)
+                        st.session_state.current_cloned_vocals = clone_vocals(audio_path)
+                        logger.debug(f"Cloned vocals: {st.session_state.current_cloned_vocals}")
+        if st.session_state.current_cloned_vocals:
+            with st.sidebar.container():
+                st.markdown("Your cloned vocals:")
+                # st.write(st.session_state.current_cloned_vocals[1])
+                st.audio(
+                    st.session_state.current_cloned_vocals[1][1], format="audio/wav",
+                    sample_rate=st.session_state.current_cloned_vocals[1][0]
+                )
+        new_prompt = ChatMessage(
             role = "system", content = """You are Dave Matthews,
             the famous musician and songwriter, engaged in a
             co-writing session with the user who could be a fellow musician or fan.  The goal
@@ -63,7 +92,6 @@ async def main():
             Your most recent chat history is detailed in the next prompts.  Keep your answers concise
             and open-ended to help the user feel as though they are in a real conversation with you.
             """)
-    ]
 
     # Display markdown with animation
     st.markdown("""<div class="text-container;" style="animation: fadeIn ease 3s;

@@ -8,9 +8,9 @@ torchcrepe
 setuptools
 wheel
 httpx==0.23.0
+audio-recorder-streamlit==0.0.8
 faiss-gpu
 fairseq
-gradio==3.34.0
 ffmpeg-python
 praat-parselmouth
 pyworld

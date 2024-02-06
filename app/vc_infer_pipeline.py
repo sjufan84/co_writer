@@ -3,6 +3,7 @@ from time import time as ttime
 import torch.nn.functional as F
 import torchcrepe  # Fork feature. Use the crepe f0 algorithm. New dependency (pip install torchcrepe)
 from torch import Tensor
+import logging
 import scipy.signal as signal
 import pyworld, os, traceback, faiss, librosa, torchcrepe
 from scipy import signal
@@ -359,7 +360,7 @@ class VC(object):
         ) + 1
         f0_mel[f0_mel <= 1] = 1
         f0_mel[f0_mel > 255] = 255
-        f0_coarse = np.rint(f0_mel).astype(np.int)
+        f0_coarse = np.rint(f0_mel).astype(np.int32)
 
         return f0_coarse, f0bak  # 1-0
 
@@ -379,6 +380,7 @@ class VC(object):
         protect,
     ):  # ,file_index,file_big_npy
         global new_npy
+        logging.info(audio0)
         feats = torch.from_numpy(audio0)
         if self.is_half:
             feats = feats.half()
@@ -542,6 +544,7 @@ class VC(object):
                 inp_f0 = np.array(inp_f0, dtype="float32")
             except:
                 traceback.print_exc()
+        sid = 0
         sid = torch.tensor(sid, device=self.device).unsqueeze(0).long()
         pitch, pitchf = None, None
         if if_f0 == 1:
