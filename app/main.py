@@ -2,6 +2,7 @@ import asyncio
 import os
 import sys
 import numpy as np
+import pandas as pd
 from IPython.display import Audio
 import streamlit as st
 from audio_recorder_streamlit import audio_recorder
@@ -24,23 +25,16 @@ api_key = os.getenv("MISTRAL_API_KEY")
 
 client = MistralClient(api_key=api_key)
 
-# @TODO - set up selectbox for audio samples for the
-# user to choose from
-# df = pd.read_csv(Path("app/audio_samples.csv"))
-
-# list1 = df["Sample 0"].tolist()
-# list2 = df["Sample 1"].tolist()
-
 # Create a function to initialize the session state variables
 def init_cowriter_session_variables():
     """ Initialize session state variables """
     # Initialize session state variables
     session_vars = [
         "chat_history", "current_audio_clip", "chat_mode", "prompt_chat_history", "current_prompt",
-        "recorded_vocals", "current_cloned_vocals"
+        "recorded_vocals", "current_cloned_vocals", "current_clip"
     ]
     default_values = [
-        [], None, "text", [], None, None, None
+        [], None, "text", [], None, None, None, None
     ]
     for var, default_value in zip(session_vars, default_values):
         if var not in st.session_state:
@@ -48,14 +42,37 @@ def init_cowriter_session_variables():
 
 init_cowriter_session_variables()
 
+
+def audio_clips_selectbox():
+    clips_df = pd.read_csv("./audios/audio_clips.csv")
+    clip_options = clips_df.columns.tolist()
+    selected_clip = st.selectbox("Select an audio clip to use as a prompt:", clip_options)
+    if selected_clip:
+        st.audio(np.array(clips_df[selected_clip].values), format="audio/wav", sample_rate=32000)
+        st.session_state.current_audio_clip = np.array(clips_df[selected_clip].values)
+    else:
+        return None
+
 async def main():
     """ Main function for the chat page """
     st.write(f"Current prompt: {st.session_state.current_prompt}")
     st.sidebar.write(f"Current chat mode: {st.session_state.chat_mode}")
     st.write(st.session_state.current_cloned_vocals)
     chat_mode_toggle = st.sidebar.radio(
-        "Chat Mode", ["Text", "Audio", "Voice Clone"], index=0
+        "Chat Mode", ["Text", "Existing Audio", "New Audio", "Voice Clone"], index=0
     )
+    if chat_mode_toggle == "Existing Audio" and st.session_state.current_clip is None:
+        with st.sidebar.container():
+            st.markdown("**Select an audio clip to use as the initial prompt:**")
+            audio_clips_selectbox()
+    elif chat_mode_toggle == "Existing Audio" and st.session_state.current_clip is not None:
+        with st.sidebar.container():
+            st.markdown("Current audio clip:")
+            st.audio(st.session_state.current_audio_clip, format="audio/wav", sample_rate=32000)
+    if chat_mode_toggle == "New Audio":
+        if st.session_state.current_audio_clip:
+            st.sidebar.markdown("**Current audio clip:**")
+            st.audio(st.session_state.current_audio_clip[0]["generated_text"], format="audio/wav", sample_rate=32000)
     if chat_mode_toggle == "Voice Clone":
         st.sidebar.markdown("**Record your vocals to be cloned:**")
         with st.sidebar.container():
@@ -152,7 +169,7 @@ async def main():
         logging.debug(f"Received response: {full_response}")
         st.session_state.chat_history.append(ChatMessage(role="assistant", content=full_response))
         logging.debug(f"Chat history: {st.session_state.chat_history}")
-        if chat_mode_toggle == "Audio":
+        if chat_mode_toggle == "New Audio":
             with st.spinner("Composing your audio...  I'll be back shortly!"):
                 if st.session_state.current_audio_clip:
                     logger.debug("Generating audio with audio prompt.")
@@ -166,6 +183,16 @@ async def main():
                 audio_clip_json = audio_clip.json()
                 st.session_state.current_audio_clip = audio_clip_json
                 logging.info(f"Current clip: {st.session_state.current_audio_clip}")
+                logging.debug("Rerunning app after composing audio.")
+                st.rerun()
+        elif chat_mode_toggle == "Existing Audio":
+            with st.spinner("Composing your audio...  I'll be back shortly!"):
+                audio_clip = await generate_audio_prompted_music(
+                    prompt=prompt,
+                    audio_clip=np.array(st.session_state.current_clip).flatten())
+                audio_clip_json = audio_clip.json()
+                st.session_state.current_clip = audio_clip_json
+                logging.info(f"Current clip: {st.session_state.current_clip}")
                 logging.debug("Rerunning app after composing audio.")
                 st.rerun()
     if st.session_state.current_audio_clip is not None:

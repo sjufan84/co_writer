@@ -142,8 +142,8 @@ def load_audio_clip(audio_file: str):
     audio, sr = librosa.load(audio_file, sr=32000)
     return audio, sr
 
-# Create a function to split the audio clip into 20 second clips
-def split_audio_clip(audio_clip: np.array, clip_length: int = 20):
+# Create a function to split the audio clip into 10 second clips
+def split_audio_clip(audio_clip: np.array, clip_length: int = 10):
     """ Split an audio clip into smaller clips """
     # Get the length of the audio clip
     clip_length = clip_length * 32000
@@ -155,9 +155,11 @@ def split_audio_clip(audio_clip: np.array, clip_length: int = 20):
 def create_audio_clip_df(audio_clips: List[np.array], sr: int):
     """ Create a dataframe of audio clips """
     audio_clips_df = pd.DataFrame()
+    # Keep every 3rd clip
     for i, clip in enumerate(audio_clips):
-        clip_series = pd.Series(clip)
-        audio_clips_df = pd.concat([audio_clips_df, clip_series], axis=1)
+        if i % 5 == 0:
+            clip_series = pd.Series(clip)
+            audio_clips_df = pd.concat([audio_clips_df, clip_series], axis=1)
     # Save the dataframe to a csv file
     audio_clips_df.to_csv("app/audios/audio_clips.csv", index=False)
     return "Audio clips dataframe created successfully."
@@ -168,3 +170,9 @@ def convert_to_wav(audio_clip: np.array, sr: int, file_name: str = "generated_mu
     # Save the audio clip to a wav file
     librosa.output.write_wav(f"app/audios/instrumentals/{file_name}.wav", audio_clip, sr)
     return audio_clip
+
+if __name__ == "__main__":
+    audio_clip = load_audio_clip("app/audios/instrumentals/fc_instrumental.wav")
+    split_clips = split_audio_clip(audio_clip[0])
+    create_audio_clip_df(split_clips, audio_clip[1])
+
