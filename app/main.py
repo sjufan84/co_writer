@@ -31,10 +31,10 @@ def init_cowriter_session_variables():
     # Initialize session state variables
     session_vars = [
         "chat_history", "current_audio_clip", "chat_mode", "prompt_chat_history", "current_prompt",
-        "recorded_vocals", "current_cloned_vocals", "current_clip"
+        "recorded_vocals", "current_cloned_vocals"
     ]
     default_values = [
-        [], None, "text", [], None, None, None, None
+        [], None, "text", [], None, None, None
     ]
     for var, default_value in zip(session_vars, default_values):
         if var not in st.session_state:
@@ -49,7 +49,7 @@ def audio_clips_selectbox():
     selected_clip = st.selectbox("Select an audio clip to use as a prompt:", clip_options)
     if selected_clip:
         st.audio(np.array(clips_df[selected_clip].values), format="audio/wav", sample_rate=32000)
-        st.session_state.current_audio_clip = np.array(clips_df[selected_clip].values)
+        st.session_state.original_clip = np.array(clips_df[selected_clip].values)
     else:
         return None
 
@@ -61,18 +61,28 @@ async def main():
     chat_mode_toggle = st.sidebar.radio(
         "Chat Mode", ["Text", "Existing Audio", "New Audio", "Voice Clone"], index=0
     )
-    if chat_mode_toggle == "Existing Audio" and st.session_state.current_clip is None:
+    st.write(st.session_state.current_audio_clip)
+
+    if chat_mode_toggle == "Existing Audio" and st.session_state.current_audio_clip is None:
         with st.sidebar.container():
             st.markdown("**Select an audio clip to use as the initial prompt:**")
             audio_clips_selectbox()
-    elif chat_mode_toggle == "Existing Audio" and st.session_state.current_clip is not None:
+    elif chat_mode_toggle == "Existing Audio" and st.session_state.current_audio_clip is not None:
         with st.sidebar.container():
             st.markdown("Current audio clip:")
-            st.audio(st.session_state.current_audio_clip, format="audio/wav", sample_rate=32000)
+            st.audio(
+                st.session_state.current_audio_clip[0]["generated_text"],
+                format="audio/wav", sample_rate=32000
+            )
+    
     if chat_mode_toggle == "New Audio":
         if st.session_state.current_audio_clip:
             st.sidebar.markdown("**Current audio clip:**")
-            st.audio(st.session_state.current_audio_clip[0]["generated_text"], format="audio/wav", sample_rate=32000)
+            st.audio(
+                st.session_state.current_audio_clip[0]["generated_text"],
+                format="audio/wav", sample_rate=32000
+            )
+
     if chat_mode_toggle == "Voice Clone":
         st.sidebar.markdown("**Record your vocals to be cloned:**")
         with st.sidebar.container():
@@ -100,15 +110,15 @@ async def main():
                     st.session_state.current_cloned_vocals[1][1], format="audio/wav",
                     sample_rate=st.session_state.current_cloned_vocals[1][0]
                 )
-        new_prompt = ChatMessage(
-            role = "system", content = """You are Dave Matthews,
-            the famous musician and songwriter, engaged in a
-            co-writing session with the user who could be a fellow musician or fan.  The goal
-            of the session is to help the user feel as though you are right alongside them,
-            helping them craft their song with Dave's style and personality.  Do not break character.
-            Your most recent chat history is detailed in the next prompts.  Keep your answers concise
-            and open-ended to help the user feel as though they are in a real conversation with you.
-            """)
+    new_prompt = ChatMessage(
+        role = "system", content = """You are Dave Matthews,
+        the famous musician and songwriter, engaged in a
+        co-writing session with the user who could be a fellow musician or fan.  The goal
+        of the session is to help the user feel as though you are right alongside them,
+        helping them craft their song with Dave's style and personality.  Do not break character.
+        Your most recent chat history is detailed in the next prompts.  Keep your answers concise
+        and open-ended to help the user feel as though they are in a real conversation with you.
+        """)
 
     # Display markdown with animation
     st.markdown("""<div class="text-container;" style="animation: fadeIn ease 3s;
@@ -154,11 +164,11 @@ async def main():
             full_response = ""
         response = client.chat_stream(
             model="mistral-medium",
-            messages=new_prompt + st.session_state.prompt_chat_history,
+            messages=[new_prompt] + st.session_state.prompt_chat_history,
             temperature=0.75,
             max_tokens=750,
         )
-        st.write(f"Messages: {new_prompt + st.session_state.prompt_chat_history}")
+        st.write(f"Messages: {[new_prompt] + st.session_state.prompt_chat_history}")
         for chunk in response:
             if chunk.choices[0].finish_reason == "stop":
                 logging.debug("Received 'stop' signal from response.")
@@ -185,32 +195,28 @@ async def main():
                 logging.info(f"Current clip: {st.session_state.current_audio_clip}")
                 logging.debug("Rerunning app after composing audio.")
                 st.rerun()
+
         elif chat_mode_toggle == "Existing Audio":
-            with st.spinner("Composing your audio...  I'll be back shortly!"):
-                audio_clip = await generate_audio_prompted_music(
-                    prompt=prompt,
-                    audio_clip=np.array(st.session_state.current_clip).flatten())
-                audio_clip_json = audio_clip.json()
-                st.session_state.current_clip = audio_clip_json
-                logging.info(f"Current clip: {st.session_state.current_clip}")
-                logging.debug("Rerunning app after composing audio.")
-                st.rerun()
-    if st.session_state.current_audio_clip is not None:
-        try:
-            audio_array = st.session_state.current_audio_clip[0]["generated_text"]
-            st.write(Audio(audio_array, rate=32000))
-            logging.debug(f"Audio array: {audio_array}, success!")
-        except Exception as e:
-            try:
-                logging.error(f"Failed to play audio: {e}")
-                st.error("Failed to play audio with Audio, trying alternative method.")
-                audio_array = st.session_state.current_audio_clip[0]["generated_text"]
-                st.audio(audio_array.flatten(), format="audio/wav", sample_rate=32000)
-            except Exception as e:
-                logging.error(f"Failed to play audio with alternative method: {e}")
-                st.error("Failed to play audio with alternative method.")
-    else:
-        logging.debug("No audio clip available.")
-        st.write("No audio clip available.")
+            if st.session_state.original_clip is not None:
+                with st.spinner("Composing your audio...  I'll be back shortly!"):
+                    audio_clip = await generate_audio_prompted_music(
+                        prompt=prompt,
+                        audio_clip=np.array(st.session_state.original_clip)
+                    )
+                    audio_clip_json = audio_clip.json()
+                    st.session_state.current_audio_clip = audio_clip_json
+                    logging.info(f"Current clip: {st.session_state.current_audio_clip}")
+                    logging.debug("Rerunning app after composing audio.")
+                    st.rerun()
+            else:
+                with st.spinner("Composing your audio...  I'll be back shortly!"):
+                    audio_clip = await generate_text_music(
+                        prompt=prompt, audio_clip=st.session_state.current_audio_clip[0]["generated_text"]
+                    )
+                    audio_clip_json = audio_clip.json()
+                    st.session_state.current_audio_clip = audio_clip_json
+                    logging.info(f"Current clip: {st.session_state.current_audio_clip}")
+                    logging.debug("Rerunning app after composing audio.")
+                    st.rerun()
 if __name__ == "__main__":
     asyncio.run(main())
