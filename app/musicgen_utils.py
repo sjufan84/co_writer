@@ -2,8 +2,10 @@ import logging
 from typing import List, Union
 import os
 import asyncio
+import pandas as pd
 import numpy as np
 import requests
+import librosa
 # import json
 import streamlit as st
 from mistralai.async_client import MistralAsyncClient
@@ -135,7 +137,39 @@ async def generate_audio_prompted_music(audio_clip: Union[np.array, List], promp
     response = requests.post(API_URL, headers=headers, json=payload)
     return response
 
+def load_audio_clip(audio_file: str):
+    """ Load an audio clip from a file """
+    audio, sr = librosa.load(audio_file, sr=32000)
+    return audio, sr
+
+# Create a function to split the audio clip into 20 second clips
+def split_audio_clip(audio_clip: np.array, clip_length: int = 20):
+    """ Split an audio clip into smaller clips """
+    # Get the length of the audio clip
+    clip_length = clip_length * 32000
+    clip_count = len(audio_clip) // clip_length
+    split_clips = np.array_split(audio_clip, clip_count)
+
+    return split_clips
+
+def create_audio_clip_df(audio_clips: List[np.array], sr: int):
+    """ Create a dataframe of audio clips """
+    audio_clips_df = pd.DataFrame()
+    for i, clip in enumerate(audio_clips):
+        clip_series = pd.Series(clip)
+        audio_clips_df = pd.concat([audio_clips_df, clip_series], axis=1)
+    # Save the dataframe to a csv file
+    audio_clips_df.to_csv("app/audios/audio_clips.csv", index=False)
+    return "Audio clips dataframe created successfully."
+
+def convert_to_wav(audio_clip: np.array, sr: int, file_name: str = "generated_music"):
+    """ Convert an audio clip to a wav file """
+    audio_clip = (audio_clip * 32767).astype(np.int16)
+    # Save the audio clip to a wav file
+    librosa.output.write_wav(f"app/audios/instrumentals/{file_name}.wav", audio_clip, sr)
+    return audio_clip
+
 if __name__ == "__main__":
-    text_prompt = "a funky house with 80s hip hop vibes"
-    output = asyncio.run(generate_text_music(prompt=text_prompt))
-    print(output)
+    loaded_clip = load_audio_clip("app/audios/instrumentals/fc_instrumental.wav")
+    split_clips = split_audio_clip(loaded_clip[0])
+    create_audio_clip_df(split_clips, loaded_clip[1])
