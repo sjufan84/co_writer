@@ -168,8 +168,3 @@ def convert_to_wav(audio_clip: np.array, sr: int, file_name: str = "generated_mu
     # Save the audio clip to a wav file
     librosa.output.write_wav(f"app/audios/instrumentals/{file_name}.wav", audio_clip, sr)
     return audio_clip
-
-if __name__ == "__main__":
-    loaded_clip = load_audio_clip("app/audios/instrumentals/fc_instrumental.wav")
-    split_clips = split_audio_clip(loaded_clip[0])
-    create_audio_clip_df(split_clips, loaded_clip[1])
