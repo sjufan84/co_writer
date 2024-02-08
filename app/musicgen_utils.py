@@ -34,24 +34,25 @@ async def get_llm_inputs(
 
     initial_message = [
         ChatMessage(
-            role = "system", content = f"""You are a famous artist in the style of {artist},
-            the famous musician, engaging with the user in a 'co-writing'
+            role = "system", content = f"""You are a musician
+            engaging with the user in a 'co-writing'
             session.  Your job is to help create a text prompt for a music generating
             model based on your previous prompt {st.session_state.current_prompt}
             the current user's prompt {prompt}, and your most recent chat_response
             {st.session_state.chat_history[-1]}.
             Here are some examples of prompts for the model:
 
-            Example Prompt 1: 'a funky house with 80s hip hop vibes'
-            Example Prompt 2: 'a chill song with influences from lofi, chillstep and downtempo'
-            Example Prompt 3: 'a catchy beat for a podcast intro'
+            Example Prompt 1: 'A dynamic blend of hip-hop and orchestral elements,
+            with sweeping strings and brass, evoking the vibrant energy of the city.'
+            Example Prompt 2: 'Violins and synths that inspire awe
+            at the finiteness of life and the universe.'
+            Example Prompt 3: 'Rock with saturated guitars, a
+            heavy bass line and crazy drum break and fills.'
 
-            Remember, these are just examples.  You should
-            craft the prompt based on {artist}' signature style, the chat history
-            and the message that the user provides.  Focus on the instruments, the
-            tempo, the mood, and the genre of the song you want to create.  Your prompt
-            should be similar to the examples above.  Focus on the key components of the
-            clip, keeping your prompt concise, focused, and to the point.
+            Remember, these are just examples.  You should craft your own prompt
+            based on the user's input and your previous prompt.  The prompt should be concise
+            and focused, however, similar to the examples above.  Each new clip will build on the previous
+            one, so highlight any requested changes or new directions in the prompt.
             """
         )
     ]
@@ -67,7 +68,7 @@ async def get_llm_inputs(
     chat_response = await client.chat(
         model=mistral_model,
         messages=messages,
-        temperature=0.5,
+        temperature=0.7,
         max_tokens=250
     )
 
@@ -95,8 +96,9 @@ async def generate_text_music(prompt: str = None):
         "parameters" : {
             "do_sample": True,
             "temperature": 0.7,
-            "duration": 12,
-            "guidance_scale": 3
+            "duration": 11,
+            "guidance_scale": 3,
+            "audio": None
         }
     }
     print(payload)
@@ -108,7 +110,9 @@ async def generate_text_music(prompt: str = None):
     response = requests.post(API_URL, headers=headers, json=payload)
     return response
 
-async def generate_audio_prompted_music(audio_clip: Union[np.array, List], prompt: str = None):
+async def generate_audio_prompted_music(
+        audio_clip: Union[np.array, List], prompt: str = None
+):
     """ Get a response from the music gen model
     based on text, no music """
     auth_token = os.getenv("HUGGINGFACE_TOKEN")
@@ -123,9 +127,9 @@ async def generate_audio_prompted_music(audio_clip: Union[np.array, List], promp
         "parameters" : {
             "do_sample": True,
             "temperature": 0.7,
-            "duration": 15,
+            "duration": 11,
             "guidance_scale": 3,
-            "audio": audio_clip
+            "audio": audio_clip,
         }
     }
 
@@ -136,43 +140,3 @@ async def generate_audio_prompted_music(audio_clip: Union[np.array, List], promp
 
     response = requests.post(API_URL, headers=headers, json=payload)
     return response
-
-def load_audio_clip(audio_file: str):
-    """ Load an audio clip from a file """
-    audio, sr = librosa.load(audio_file, sr=32000)
-    return audio, sr
-
-# Create a function to split the audio clip into 10 second clips
-def split_audio_clip(audio_clip: np.array, clip_length: int = 10):
-    """ Split an audio clip into smaller clips """
-    # Get the length of the audio clip
-    clip_length = clip_length * 32000
-    clip_count = len(audio_clip) // clip_length
-    split_clips = np.array_split(audio_clip, clip_count)
-
-    return split_clips
-
-def create_audio_clip_df(audio_clips: List[np.array], sr: int):
-    """ Create a dataframe of audio clips """
-    audio_clips_df = pd.DataFrame()
-    # Keep every 3rd clip
-    for i, clip in enumerate(audio_clips):
-        if i % 5 == 0:
-            clip_series = pd.Series(clip)
-            audio_clips_df = pd.concat([audio_clips_df, clip_series], axis=1)
-    # Save the dataframe to a csv file
-    audio_clips_df.to_csv("app/audios/audio_clips.csv", index=False)
-    return "Audio clips dataframe created successfully."
-
-def convert_to_wav(audio_clip: np.array, sr: int, file_name: str = "generated_music"):
-    """ Convert an audio clip to a wav file """
-    audio_clip = (audio_clip * 32767).astype(np.int16)
-    # Save the audio clip to a wav file
-    librosa.output.write_wav(f"app/audios/instrumentals/{file_name}.wav", audio_clip, sr)
-    return audio_clip
-
-if __name__ == "__main__":
-    audio_clip = load_audio_clip("app/audios/instrumentals/fc_instrumental.wav")
-    split_clips = split_audio_clip(audio_clip[0])
-    create_audio_clip_df(split_clips, audio_clip[1])
-
