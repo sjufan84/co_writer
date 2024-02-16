@@ -333,7 +333,7 @@ def calculate_similarity_score(
     return f"Score {score[0][0]}, {distances}"
 
 
-def vc_single(
+async def vc_single(
     sid,
     input_audio_path,
     f0_up_key,
@@ -354,7 +354,7 @@ def vc_single(
         return "You need to upload an audio", None
     f0_up_key = int(f0_up_key)
     try:
-        audio = load_audio(input_audio_path, 16000, DoFormant, Quefrency, Timbre)
+        audio = await load_audio(input_audio_path)
         logging.log(logging.INFO, "audio loaded")
         audio_max = np.abs(audio).max() / 0.95
         if audio_max > 1:
@@ -1562,21 +1562,20 @@ spk_item = get_vc("joel.pth", person)
 vc_transform0 = 0
 file_index1 = match_index(sid0)
 index_rate1 = 0.66
-input_audio0 = "./audios/recorded_audio.wav"
 vc_output2 = "./audios/cloned_audio.wav"
 f0method0 = "rmvpe"
 crepe_hop_length = 120
 filter_radius0 = 3
-resample_sr0 = 32000   
+resample_sr0 = tgt_sr
 rms_mix_rate0 = 0.21
 protect0 = 0.33
 formanting = False
 formant_preset = False
    
-def clone_vocals(input_audio: str):
+async def clone_vocals(input_audio: str):
     logging.info(f"Cloning vocals from {input_audio}")
-    audio_output, sr = vc_single(
-        spk_item, input_audio0,
+    audio_output, sr = await vc_single(
+        spk_item, input_audio,
         vc_transform0,
         f0_file,
         f0method0,

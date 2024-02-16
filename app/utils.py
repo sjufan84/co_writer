@@ -1,14 +1,14 @@
 import ffmpeg
 import numpy as np
-
-# import praatio
-# import praatio.praat_scripts
+import librosa
+import logging
+import csv
 import os
 import sys
 
-import random
-
-import csv
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 platform_stft_mapping = {
     "linux": "stftpitchshift",
@@ -47,7 +47,7 @@ def CSVutil(file, rw, type, *args):
             csv_writer.writerow([stop])
 
 
-def load_audio(file, sr, DoFormant, Quefrency, Timbre):
+'''def load_audio(file, sr, DoFormant, Quefrency, Timbre):
     converted = False
     DoFormant, Quefrency, Timbre = CSVutil("csvdb/formanting.csv", "r", "formanting")
     try:
@@ -149,5 +149,15 @@ def load_audio(file, sr, DoFormant, Quefrency, Timbre):
             print("couldn't remove converted type of file")
         converted = False
 
-    return np.frombuffer(out, np.float32).flatten()
+    return np.frombuffer(out, np.float32).flatten()'''
 
+async def load_audio(audio_path: str):
+    """ Load an audio file and return the audio data as a numpy array """
+    try:
+        # Load the audio file using librosa
+        logger.debug(f"Loading audio file: {audio_path}")
+        audio_data, _ = librosa.load(audio_path, sr=16000, mono=True)
+        logger.debug(f"Loaded audio file: {audio_path}")
+        return audio_data
+    except Exception as e:
+        raise RuntimeError(f"Failed to load audio: {e}")
