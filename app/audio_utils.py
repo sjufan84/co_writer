@@ -1,9 +1,6 @@
-import ffmpeg
-import numpy as np
 import librosa
 import logging
 import csv
-import os
 import sys
 
 # Set up logging

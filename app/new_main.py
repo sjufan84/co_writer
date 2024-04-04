@@ -2,10 +2,10 @@ import asyncio
 import os
 import sys
 import numpy as np
-# from IPython.display import Audio
+from IPython.display import Audio
 import streamlit as st
 from mistralai.models.chat_completion import ChatMessage
-# from mistralai.client import MistralClient
+from mistralai.client import MistralClient
 from dotenv import load_dotenv
 from streamlit_extras.stylable_container import stylable_container
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
