@@ -1,11 +1,13 @@
 import torch
 import os
 import traceback
+from pathlib import Path
 import sys
 import warnings
 import shutil
 import numpy as np
 import requests
+from pathlib import Path
 from fairseq import checkpoint_utils
 import logging
 from app.vc_infer_pipeline import VC
@@ -19,19 +21,6 @@ from app.lib.infer_pack.models import (
     SynthesizerTrnMs768NSFsid_nono,
 )
 
-os.environ["no_proxy"] = "localhost, 127.0.0.1, ::1"
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-tmp = os.path.join(now_dir, "TEMP")
-shutil.rmtree(tmp, ignore_errors=True)
-shutil.rmtree("%s/runtime/Lib/site-packages/infer_pack" % (now_dir), ignore_errors=True)
-os.makedirs(tmp, exist_ok=True)
-os.makedirs(os.path.join(now_dir, "logs"), exist_ok=True)
-os.makedirs(os.path.join(now_dir, "weights"), exist_ok=True)
-os.environ["TEMP"] = tmp
-warnings.filterwarnings("ignore")
-torch.manual_seed(114514)
-
 global DoFormant, Quefrency, Timbre
 
 sr_dict = {
@@ -42,29 +31,22 @@ sr_dict = {
 
 # i18n = I18nAuto()
 config = Config()
-weight_root = "weights"
-index_root = "logs"
 file_index = None
 hubert_model = None
-
-if not os.path.isdir('csvdb/'):
-    os.makedirs('csvdb')
-    frmnt, stp = open("csvdb/formanting.csv", 'w'), open("csvdb/stop.csv", 'w')
-    frmnt.close()
-    stp.close()
+weight_root = "./app/weights"
 
 try:
-    DoFormant, Quefrency, Timbre = CSVutil('csvdb/formanting.csv', 'r', 'formanting')
+    DoFormant, Quefrency, Timbre = CSVutil(Path('./app/csvdb/formanting.csv'), 'r', 'formanting')
     DoFormant = (
         lambda DoFormant: True if DoFormant.lower() == 'true' else (False if DoFormant.lower() == 'false' else DoFormant)
     )(DoFormant)
 except (ValueError, TypeError, IndexError):
     DoFormant, Quefrency, Timbre = False, 1.0, 1.0
-    CSVutil('csvdb/formanting.csv', 'w+', 'formanting', DoFormant, Quefrency, Timbre)
+    CSVutil('./csvdb/formanting.csv', 'w+', 'formanting', DoFormant, Quefrency, Timbre)
 
 def download_models():
     # Download hubert base model if not present
-    if not os.path.isfile('./hubert_base.pt'):
+    if not Path('./app/hubert_base.pt'):
         response = requests.get('https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt')
 
         if response.status_code == 200:
@@ -75,7 +57,7 @@ def download_models():
             raise Exception("Failed to download hubert base model file. Status code: " + str(response.status_code) + ".")
 
     # Download rmvpe model if not present
-    if not os.path.isfile('./rmvpe.pt'):
+    if not Path('./app/rmvpe.pt'):
         response = requests.get('https://drive.usercontent.google.com/download?id=1Hkn4kNuVFRCNQwyxQFRtmzmMBGpQxptI&export=download&authuser=0&confirm=t&uuid=0b3a40de-465b-4c65-8c41-135b0b45c3f7&at=APZUnTV3lA3LnyTbeuduura6Dmi2:1693724254058')
 
         if response.status_code == 200:
@@ -218,7 +200,7 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 def load_hubert():
     global hubert_model
     models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
-        ["hubert_base.pt"],
+        ["./app/hubert_base.pt"],
         suffix="",
     )
     hubert_model = models[0]
@@ -382,7 +364,7 @@ person = "Joel"
 sid0 = "joel.pth"
 spk_item = get_vc("joel.pth", person)
 vc_transform0 = 0
-file_index1 = './logs/joel/added_IVF479_Flat_nprobe_1.index'
+file_index1 = './app/logs/joel/added_IVF479_Flat_nprobe_1.index'
 index_rate1 = 0.66
 vc_output2 = "./audios/cloned_audio.wav"
 f0method0 = "rmvpe"
