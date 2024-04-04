@@ -1,12 +1,18 @@
-import numpy as np, parselmouth, torch, pdb, sys, os
+import numpy as np
+import parselmouth
+import torch
+import sys
+import os
 from time import time as ttime
 import torch.nn.functional as F
 import torchcrepe  # Fork feature. Use the crepe f0 algorithm. New dependency (pip install torchcrepe)
+import librosa
+import traceback
+import faiss
+import pyworld
 from torch import Tensor
 import logging
 import scipy.signal as signal
-import pyworld, os, traceback, faiss, librosa, torchcrepe
-from scipy import signal
 from functools import lru_cache
 
 now_dir = os.getcwd()
@@ -63,14 +69,14 @@ class VC(object):
             config.x_max,
             config.is_half,
         )
-        self.sr = 16000  # hubert输入采样率
-        self.window = 160  # 每帧点数
-        self.t_pad = self.sr * self.x_pad  # 每条前后pad时间
-        self.t_pad_tgt = tgt_sr * self.x_pad
-        self.t_pad2 = self.t_pad * 2
-        self.t_query = self.sr * self.x_query  # 查询切点前后查询时间
-        self.t_center = self.sr * self.x_center  # 查询切点位置
-        self.t_max = self.sr * self.x_max  # 免查询时长阈值
+        self.sr = 16000  # hubert sample rate
+        self.window = 160  # points per frame
+        self.t_pad = self.sr * self.x_pad  # padding for the audio
+        self.t_pad_tgt = tgt_sr * self.x_pad # padding for target sample rate
+        self.t_pad2 = self.t_pad * 2 # padding for the end of the audio
+        self.t_query = self.sr * self.x_query  # The query time before and after the query cutpoint
+        self.t_center = self.sr * self.x_center  # Query the location of the tangent point
+        self.t_max = self.sr * self.x_max  # Query-free duration threshold
         self.device = config.device
 
     # Fork Feature: Get the best torch device to use for f0 algorithms that require a torch device. Will return the type (torch.device)

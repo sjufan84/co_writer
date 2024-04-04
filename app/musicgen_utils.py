@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+client = MistralAsyncClient(api_key=os.getenv("MISTRAL_API_KEY"))
+
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -96,7 +98,7 @@ async def generate_text_music(prompt: str = None):
         "parameters" : {
             "do_sample": True,
             "temperature": 0.7,
-            "duration": 11,
+            "duration": 10,
             "guidance_scale": 3,
             "audio": None
         }
@@ -127,12 +129,12 @@ async def generate_audio_prompted_music(
         "parameters" : {
             "do_sample": True,
             "temperature": 0.7,
-            "duration": 11,
+            "duration": 10,
             "guidance_scale": 3,
             "audio": audio_clip,
         }
     }
-
+    print(payload)
     headers = {
         "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json"

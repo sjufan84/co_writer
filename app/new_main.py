@@ -2,15 +2,18 @@ import asyncio
 import os
 import sys
 import numpy as np
-from IPython.display import Audio
+# from IPython.display import Audio
 import streamlit as st
 from mistralai.models.chat_completion import ChatMessage
-from mistralai.client import MistralClient
+# from mistralai.client import MistralClient
 from dotenv import load_dotenv
+from streamlit_extras.stylable_container import stylable_container
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import clone_vocals
 from musicgen_utils import generate_audio_prompted_music, generate_text_music
 import logging
+from dependencies import get_openai_client
+from PIL import Image
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -19,9 +22,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Set up Mistral client
-api_key = os.getenv("MISTRAL_API_KEY")
+# api_key = os.getenv("MISTRAL_API_KEY")
 
-client = MistralClient(api_key=api_key)
+client = get_openai_client()
 
 # Create a list of audio paths from the "./audios/vocal_clips" directory
 audio_paths = [f"./audios/vocal_clips/{audio}" for audio in os.listdir("./audios/vocal_clips")]
@@ -45,9 +48,21 @@ init_cowriter_session_variables()
 
 async def main():
     """ Main function for the chat page """
-    st.write(f"Current prompt: {st.session_state.current_prompt}")
-    st.sidebar.write(f"Current chat mode: {st.session_state.chat_mode}")
-    st.write(st.session_state.current_cloned_vocals)
+    st.write(f"Current musicgen prompt: {st.session_state.current_prompt}")
+    if not st.session_state.chat_history:
+        with stylable_container(
+            key = "background-image",
+            css_styles="""
+            {
+                text-align: center;
+            }
+            """
+        ):
+            st.image(
+                Image.open("./resources/artist_vault.png"),
+                use_column_width=True,
+            )
+    
     chat_mode_toggle = st.sidebar.radio(
         "Chat Mode", ["Text", "Audio", "Voice Clone"], index=0
     )
@@ -56,7 +71,7 @@ async def main():
         if st.session_state.current_audio_clip is not None:
             with st.sidebar.container():
                 st.markdown("Current audio clip:")
-                st.write(Audio(np.array(st.session_state.current_audio_clip[0]["generated_text"]), rate=32000))
+                st.audio(np.array(st.session_state.current_audio_clip[0]["generated_text"]), sample_rate=32000)
 
     if chat_mode_toggle == "Voice Clone":
         with st.sidebar.container():
@@ -76,13 +91,12 @@ async def main():
         if st.session_state.current_cloned_vocals:
             with st.sidebar.container():
                 st.markdown("Your cloned vocals:")
-                st.write(st.session_state.current_cloned_vocals[1][0])
                 st.audio(
                     st.session_state.current_cloned_vocals[1][1], format="audio/wav",
                     sample_rate=st.session_state.current_cloned_vocals[1][0]
                 )
     new_prompt = ChatMessage(
-        role = "system", content = """You are Dave Matthews,
+        role = "system", content = """You are an artist in the style of Dave Matthews,
         the famous musician and songwriter, engaged in a
         co-writing session with the user who could be a fellow musician or fan.  The goal
         of the session is to help the user feel as though you are right alongside them,
@@ -110,6 +124,7 @@ async def main():
 
     # Accept user input
     if prompt := st.chat_input("Hey friend, let's start writing!"):
+       
         logging.debug(f"Received user input: {prompt}")
         # Add user message to chat history
         st.session_state.chat_history.append(ChatMessage(role="user", content=prompt))
@@ -124,29 +139,27 @@ async def main():
         with st.chat_message("assistant", avatar="🎸"):
             message_placeholder = st.empty()
             full_response = ""
-        response = client.chat_stream(
-            model="mistral-medium",
-            messages=[new_prompt] + st.session_state.prompt_chat_history,
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-0125",
+            messages= [new_prompt] + st.session_state.prompt_chat_history,
+            stream=True,
             temperature=0.75,
-            max_tokens=750,
+            max_tokens=350,
         )
-        st.write(f"Messages: {[new_prompt] + st.session_state.prompt_chat_history}")
         for chunk in response:
             if chunk.choices[0].finish_reason == "stop":
                 logging.debug("Received 'stop' signal from response.")
                 break
             full_response += chunk.choices[0].delta.content
             message_placeholder.markdown(full_response + "▌")
-
         message_placeholder.markdown(full_response)
-        logging.debug(f"Received response: {full_response}")
 
         st.session_state.chat_history.append(ChatMessage(role="assistant", content=full_response))
         logging.debug(f"Chat history: {st.session_state.chat_history}")
 
         if chat_mode_toggle == "Audio":
             with st.spinner("Composing your audio...  I'll be back shortly!"):
-                if st.session_state.current_audio_clip:
+                if st.session_state.current_audio_clip is not None:
                     logger.debug("Generating audio with audio prompt.")
                     audio_clip = await generate_audio_prompted_music(
                         prompt=prompt,
@@ -159,7 +172,7 @@ async def main():
                     logging.info(f"Current clip: {st.session_state.current_audio_clip}")
                     logging.debug("Rerunning app after composing audio.")
                     st.rerun()
-                else:
+                elif st.session_state.current_audio_clip is None:
                     audio_clip = await generate_text_music(prompt=prompt)
                     audio_clip_json = audio_clip.json()
                     st.session_state.current_audio_clip = audio_clip_json
