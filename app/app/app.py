@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # Import routers
-from app.routes.cloning_routes import router as cloning_routes
+from app.routes.clone_routes import router as clone_routes
 
 DESCRIPTION = """
 # LinerGen FastAPI
@@ -51,6 +51,6 @@ app.add_middleware(
 
 
 # Include routers
-routers = [cloning_routes]
+routers = [clone_routes]
 for router in routers:
     app.include_router(router)

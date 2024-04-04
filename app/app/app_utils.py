@@ -8,11 +8,11 @@ import numpy as np
 import requests
 from fairseq import checkpoint_utils
 import logging
-from vc_infer_pipeline import VC
-from config import Config
-from i18n import I18nAuto
-from audio_utils import load_audio, CSVutil
-from lib.infer_pack.models import (
+from app.vc_infer_pipeline import VC
+from app.config import Config
+from app.i18n import I18nAuto
+from app.audio_utils import load_audio, CSVutil
+from app.lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,
     SynthesizerTrnMs768NSFsid,
@@ -40,7 +40,7 @@ sr_dict = {
     "48k": 48000,
 }
 
-i18n = I18nAuto()
+# i18n = I18nAuto()
 config = Config()
 weight_root = "weights"
 index_root = "logs"
@@ -208,7 +208,7 @@ if if_gpu_ok == True and len(gpu_infos) > 0:
     gpu_info = "\n".join(gpu_infos)
     default_batch_size = min(mem) // 2
 else:
-    gpu_info = i18n("很遗憾您这没有能用的显卡来支持您训练")
+    # gpu_info = i18n("很遗憾您这没有能用的显卡来支持您训练")
     default_batch_size = 1
 gpus = "-".join([i[0] for i in gpu_infos])
 
