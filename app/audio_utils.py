@@ -4,7 +4,7 @@ import csv
 import sys
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 platform_stft_mapping = {
@@ -152,9 +152,9 @@ async def load_audio(audio_path: str):
     """ Load an audio file and return the audio data as a numpy array """
     try:
         # Load the audio file using librosa
-        logger.debug(f"Loading audio file: {audio_path}")
+        logger.info(f"Loading audio file: {audio_path}")
         audio_data, _ = librosa.load(audio_path, sr=16000, mono=True)
-        logger.debug(f"Loaded audio file: {audio_path}")
+        logger.info(f"Loaded audio file: {audio_path}")
         return audio_data
     except Exception as e:
         raise RuntimeError(f"Failed to load audio: {e}")

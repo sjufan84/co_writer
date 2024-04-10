@@ -20,6 +20,7 @@ async def clone_liner_vocals(audio_file: UploadFile):
     Returns:
     str: A Base64 string of the cloned vocals audio file.
     """
+    logger.info(f"Cloning vocals from {audio_file.filename}.")
     vocals = await clone_vocals(audio_file.file)
     logger.info(f"{vocals[1]}")
     audio_array = vocals[1][1]

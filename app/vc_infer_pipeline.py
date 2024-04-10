@@ -18,9 +18,7 @@ from functools import lru_cache
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 
-bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
 new_npy = None
-
 input_audio_path2wav = {}
 
 
@@ -501,6 +499,9 @@ class VC(object):
         crepe_hop_length,
         f0_file=None,
     ):
+        global bh, ah
+        bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
+
         if (
             file_index != ""
             # and file_big_npy != ""
