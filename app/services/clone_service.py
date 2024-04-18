@@ -9,7 +9,6 @@ from app.app_utils import clone_vocals
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 async def clone_liner_vocals(audio_file: UploadFile):
     """
     Clones the vocals from an audio file.
@@ -32,5 +31,6 @@ async def clone_liner_vocals(audio_file: UploadFile):
 
     # Convert byte stream to Base64 string
     base64_audio = base64.b64encode(byte_stream.getvalue()).decode('utf-8')
+    logger.info(f"Vocals cloned successfully. Returning Base64 string {base64_audio[:50]}")
 
     return base64_audio

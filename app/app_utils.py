@@ -5,7 +5,7 @@ import numpy as np
 from fairseq import checkpoint_utils
 import logging
 from app.vc_infer_pipeline import VC
-from app.config import Config
+from app.configs.config import Config
 from app.audio_utils import load_audio
 from app.lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,

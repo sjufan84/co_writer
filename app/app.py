@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 # Import routers
 from app.routes.clone_routes import router as clone_routes
+from fastapi.middleware.cors import CORSMiddleware
 
 DESCRIPTION = """
 # LinerGen FastAPI
@@ -37,6 +38,15 @@ app = FastAPI(
         "name": "MIT License",
         "url": "https://opensource.org/licenses/MIT"
     }
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
